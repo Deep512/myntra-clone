@@ -1,5 +1,5 @@
 import React, {useState, useRef} from 'react';
-import {View, Animated, Text, StyleSheet, PanResponder} from 'react-native';
+import {Animated, Text, StyleSheet, PanResponder} from 'react-native';
 import usePositionHook from './src/usePositionHook';
 const styles = StyleSheet.create({
   floatingComponent: {
@@ -7,7 +7,6 @@ const styles = StyleSheet.create({
     top: 0,
   },
   relativeFloatingComponent: {
-    position: 'absolute',
     backgroundColor: 'red',
     width: 100,
     height: 100,
@@ -22,16 +21,24 @@ export default function FloatingComponent({
   updatePositions,
   headerHeight,
   footerHeight,
+  paddingTopAnimationOffset,
+  paddingBottomAnimationOffset,
 }) {
   const [widgetLayout, setWidgetLayout] = useState({width: 0, height: 0});
   const widgetLayoutRef = useRef({width: 0, height: 0});
-  const animatedXY = useRef(new Animated.ValueXY({x: 0, y: 0})).current;
-  const [widgetX, widgetY] = usePositionHook(
+
+  const [
+    widgetX,
+    widgetY,
+    horizontalTranslateBounds,
+    verticalTranslateBounds,
+    animatedXY,
+  ] = usePositionHook(
     positionData,
     widgetLayout.width,
     widgetLayout.height,
-    headerHeight,
-    footerHeight,
+    paddingTopAnimationOffset.__getValue(),
+    paddingBottomAnimationOffset.__getValue(),
   );
 
   const panResponder = useRef(
@@ -43,10 +50,31 @@ export default function FloatingComponent({
           y: animatedXY.y._value,
         });
       },
-      onPanResponderMove: Animated.event(
-        [null, {dx: animatedXY.x, dy: animatedXY.y}],
-        {useNativeDriver: false},
-      ),
+      onPanResponderMove: (evt, gestureState) => {
+        const {minX, maxX} = horizontalTranslateBounds.current;
+        const {minY, maxY} = verticalTranslateBounds.current;
+
+        const {x, y} = animatedXY;
+        let xDiff = gestureState.dx;
+        let yDiff = gestureState.dy;
+        const newX = x._offset + xDiff;
+        const newY = y._offset + yDiff;
+
+        if (newX < minX) {
+          xDiff += minX - newX;
+        } else if (newX > maxX) {
+          xDiff -= newX - maxX;
+        }
+
+        if (newY < minY) {
+          yDiff += minY - newY;
+        } else if (newY > maxY) {
+          yDiff -= newY - maxY;
+        }
+
+        animatedXY.x.setValue(xDiff);
+        animatedXY.y.setValue(yDiff);
+      },
       onPanResponderRelease: (evt, gestureState) => {
         animatedXY.flattenOffset();
         onDrop(
@@ -60,8 +88,16 @@ export default function FloatingComponent({
   ).current;
 
   return (
-    <View
-      style={styles.floatingComponent}
+    <Animated.View
+      style={[
+        styles.floatingComponent,
+        positionData.position === 'relative'
+          ? {
+              paddingTop: paddingTopAnimationOffset,
+              paddingBottom: paddingBottomAnimationOffset,
+            }
+          : {},
+      ]}
       pointerEvents={'box-none'}
       {...panResponder.panHandlers}>
       <Animated.View
@@ -69,7 +105,11 @@ export default function FloatingComponent({
         style={[
           styles.relativeFloatingComponent,
           {
-            top: widgetY,
+            top:
+              widgetY -
+              (positionData.position === 'relative'
+                ? paddingTopAnimationOffset.__getValue()
+                : 0),
             left: widgetX,
           },
           {
@@ -84,6 +124,6 @@ export default function FloatingComponent({
         }}>
         <Text>Floating Component {val}</Text>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }

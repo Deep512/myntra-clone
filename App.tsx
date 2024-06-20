@@ -1,4 +1,4 @@
-import React, {useCallback, useRef, useState} from 'react';
+import React, {useCallback, useRef, useState, useEffect} from 'react';
 
 import Page from './Page.js';
 import FloatingComponent from './FloatingComponent';
@@ -6,12 +6,18 @@ import {
   FOOTER_HEIGHT,
   HEADER_HEIGHT,
   IS_DRAGGABLE,
+  POSITION_FIXED,
   POSITION_RELATIVE,
 } from './src/constants';
 import {getArray} from './src/utils';
-import {Dimensions} from 'react-native';
+import {
+  Animated,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+} from 'react-native';
 
-const NO_OF_FLOATING_COMPONENTS = 3;
+const NO_OF_FLOATING_COMPONENTS = 9;
 
 type PositionData = {
   val: number;
@@ -24,20 +30,123 @@ type PositionData = {
 function App() {
   const {width: windowWidth, height: windowHeight} = Dimensions.get('window');
 
-  const [headerHeight] = useState(HEADER_HEIGHT);
-  const [footerHeight] = useState(FOOTER_HEIGHT);
+  const [headerHeight, setHeaderHeight] = useState(HEADER_HEIGHT);
+  const [footerHeight, setFooterHeight] = useState(FOOTER_HEIGHT);
 
-  // Simulating header footer height changes
+  // // Simulating header footer height changes
+  // const reduce = useRef(true);
   // useEffect(() => {
-  //   let interval;
-  //   if (headerHeight > 0 || footerHeight > 0) {
+  //   let interval: NodeJS.Timeout;
+  //   if (reduce.current && (headerHeight > 0 || footerHeight > 0)) {
   //     interval = setInterval(() => {
-  //       headerHeight > 0 && setHeaderHeight(headerHeight => headerHeight - 1);
-  //       footerHeight > 0 && setFooterHeight(footerHeight => footerHeight - 1);
+  //       headerHeight > 0 &&
+  //         setHeaderHeight(prevHeaderHeight => prevHeaderHeight - 1);
+  //       footerHeight > 0 &&
+  //         setFooterHeight(prevFooterHeight => prevFooterHeight - 1);
+  //       if (footerHeight === 1) {
+  //         reduce.current = false;
+  //       }
   //     }, 10);
   //   }
   //   return () => clearInterval(interval);
   // }, [headerHeight, footerHeight]);
+
+  // useEffect(() => {
+  //   let interval: NodeJS.Timeout;
+  //   if (!reduce.current) {
+  //     interval = setInterval(() => {
+  //       headerHeight < HEADER_HEIGHT &&
+  //         setHeaderHeight(prevHeaderHeight => prevHeaderHeight + 1);
+  //       footerHeight < FOOTER_HEIGHT &&
+  //         setFooterHeight(prevFooterHeight => prevFooterHeight + 1);
+  //       if (footerHeight === FOOTER_HEIGHT - 1) {
+  //         reduce.current = true;
+  //       }
+  //     }, 10);
+  //   }
+  //   return () => clearInterval(interval);
+  // }, [headerHeight, footerHeight]);
+
+  const _lastOffsetY = useRef(0);
+  const _scrollDirection = useRef<string>();
+  const _scrollBehaviourOffset = useRef(0);
+  const _scrollBehaviourOffsetPrevious = useRef(0);
+  const _scrollBehaviourOffsetAnimatedValue = useRef(
+    new Animated.Value(0),
+  ).current;
+
+  const scrollBehvavioutOffsetInterpolation = useRef(
+    _scrollBehaviourOffsetAnimatedValue,
+  ).current.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  const headerAnimationOffset = scrollBehvavioutOffsetInterpolation.interpolate(
+    {
+      inputRange: [0, 1],
+      outputRange: [0, -HEADER_HEIGHT],
+      extrapolate: 'clamp',
+    },
+  );
+  const footerAnimationOffset = scrollBehvavioutOffsetInterpolation.interpolate(
+    {
+      inputRange: [0, 1],
+      outputRange: [0, FOOTER_HEIGHT],
+      extrapolate: 'clamp',
+    },
+  );
+
+  const paddingTopAnimationOffset = headerAnimationOffset.interpolate({
+    inputRange: [-HEADER_HEIGHT, 0],
+    outputRange: [0, HEADER_HEIGHT],
+    extrapolate: 'clamp',
+  });
+
+  const paddingBottomAnimationOffset = footerAnimationOffset.interpolate({
+    inputRange: [0, FOOTER_HEIGHT],
+    outputRange: [FOOTER_HEIGHT, 0],
+    extrapolate: 'clamp',
+  });
+
+  const _notifyOffSetStateChange = (): void => {
+    if (
+      _scrollBehaviourOffset.current === 0 ||
+      _scrollBehaviourOffset.current === 1
+    ) {
+      if (
+        _scrollBehaviourOffsetPrevious.current !==
+        _scrollBehaviourOffset.current
+      ) {
+        _scrollBehaviourOffsetPrevious.current = _scrollBehaviourOffset.current;
+      }
+    }
+  };
+
+  const _setBehaviourOffset = (nextOffset: number): void => {
+    _scrollBehaviourOffset.current =
+      nextOffset > 1 ? 1 : nextOffset < 0 ? 0 : nextOffset;
+    _scrollBehaviourOffsetAnimatedValue.setValue(
+      _scrollBehaviourOffset.current,
+    );
+    _notifyOffSetStateChange();
+  };
+
+  const handleOnScroll = (
+    event?: NativeSyntheticEvent<NativeScrollEvent>,
+  ): void => {
+    if (event) {
+      const nextY: number = event.nativeEvent.contentOffset.y;
+      const delta =
+        (nextY - _lastOffsetY.current) / (FOOTER_HEIGHT + HEADER_HEIGHT);
+      _scrollDirection.current =
+        delta > 0 ? 'down' : delta < 0 ? 'up' : _scrollDirection.current;
+      const nextOffset = _scrollBehaviourOffset.current + delta;
+      _setBehaviourOffset(nextOffset);
+      _lastOffsetY.current = nextY;
+    }
+  };
 
   const positionsRef = useRef<PositionData[]>(
     getArray(NO_OF_FLOATING_COMPONENTS).map(val => ({
@@ -127,7 +236,15 @@ function App() {
   );
   return (
     <>
-      <Page />
+      <Page
+        headerHeight={headerHeight}
+        footerHeight={footerHeight}
+        headerAnimationOffset={headerAnimationOffset}
+        footerAnimationOffset={footerAnimationOffset}
+        paddingTopAnimationOffset={paddingTopAnimationOffset}
+        paddingBottomAnimationOffset={paddingBottomAnimationOffset}
+        handleOnScroll={handleOnScroll}
+      />
       {getArray(NO_OF_FLOATING_COMPONENTS).map((val, idx) => (
         <FloatingComponent
           key={val}
@@ -138,6 +255,8 @@ function App() {
           updatePositions={updatePositions}
           headerHeight={headerHeight}
           footerHeight={footerHeight}
+          paddingTopAnimationOffset={paddingTopAnimationOffset}
+          paddingBottomAnimationOffset={paddingBottomAnimationOffset}
         />
       ))}
     </>

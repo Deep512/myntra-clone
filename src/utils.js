@@ -1,16 +1,14 @@
 export const getArray = cnt => {
-  return Array(cnt)
-    .fill(0)
-    .map((val, idx) => idx);
+  return Array.from(Array(cnt).keys());
 };
 export const getContentInsetValue = (contentDimension, widgetDimension) => {
   switch (contentDimension) {
     case 'start':
-      return widgetDimension;
+      return 0;
     case 'middle':
       return widgetDimension / 2;
     case 'end':
-      return 0;
+      return widgetDimension;
     default:
       return 0;
   }
