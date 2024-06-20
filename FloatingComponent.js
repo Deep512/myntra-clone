@@ -105,14 +105,6 @@ export default function FloatingComponent({
         style={[
           styles.relativeFloatingComponent,
           {
-            top:
-              widgetY -
-              (positionData.position === 'relative'
-                ? paddingTopAnimationOffset.__getValue()
-                : 0),
-            left: widgetX,
-          },
-          {
             transform: animatedXY.getTranslateTransform(),
           },
         ]}

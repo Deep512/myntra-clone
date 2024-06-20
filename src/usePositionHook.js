@@ -37,17 +37,18 @@ export default function usePositionHook(
     }
     value -= getContentInsetValue(contentX, widgetWidth);
     value += offsetX;
+    animatedXY.x.setValue(value);
     return value;
-  }, [contentX, widgetWidth, x, offsetX, windowWidth]);
+  }, [contentX, widgetWidth, x, offsetX, windowWidth, animatedXY]);
 
   horizontalTranslateBounds.current = useMemo(() => {
-    let minX = -widgetX + (offsetX > 0 ? offsetX : 0),
-      maxX = windowWidth - widgetX - widgetWidth + (offsetX < 0 ? offsetX : 0);
+    let minX = offsetX > 0 ? offsetX : 0,
+      maxX = windowWidth - widgetWidth + (offsetX < 0 ? offsetX : 0);
     return {minX, maxX};
-  }, [windowWidth, widgetWidth, widgetX, offsetX]);
+  }, [windowWidth, widgetWidth, offsetX]);
 
   const widgetY = useMemo(() => {
-    let value = isFixed ? 0 : headerHeight;
+    let value = 0;
     const effWindowHeight = isFixed
       ? windowHeight
       : windowHeight - headerHeight - footerHeight;
@@ -63,26 +64,26 @@ export default function usePositionHook(
     }
     value -= getContentInsetValue(contentY, widgetHeight);
     value += offsetY;
+    animatedXY.y.setValue(value);
     return value;
   }, [
     contentY,
     widgetHeight,
     y,
-    isFixed,
     offsetY,
     windowHeight,
+    animatedXY,
+    isFixed,
     headerHeight,
     footerHeight,
   ]);
 
   verticalTranslateBounds.current = useMemo(() => {
-    let minY =
-        -widgetY + (isFixed ? 0 : headerHeight) + (offsetY > 0 ? offsetY : 0),
+    let minY = offsetY > 0 ? offsetY : 0,
       maxY =
         windowHeight -
         widgetHeight -
-        widgetY -
-        (isFixed ? 0 : footerHeight) +
+        (isFixed ? 0 : footerHeight + headerHeight) +
         (offsetY < 0 ? offsetY : 0);
 
     animatedXY.y.setValue(
@@ -92,12 +93,11 @@ export default function usePositionHook(
   }, [
     windowHeight,
     widgetHeight,
-    widgetY,
+    offsetY,
+    animatedXY.y,
+    isFixed,
     headerHeight,
     footerHeight,
-    offsetY,
-    isFixed,
-    animatedXY.y,
   ]);
 
   return [
