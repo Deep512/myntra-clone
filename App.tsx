@@ -16,6 +16,7 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from 'react-native';
+import FloatingComponentContainer from './FloatingComponentContainer.js';
 
 const NO_OF_FLOATING_COMPONENTS = 9;
 
@@ -33,40 +34,6 @@ function App() {
   const [headerHeight, setHeaderHeight] = useState(HEADER_HEIGHT);
   const [footerHeight, setFooterHeight] = useState(FOOTER_HEIGHT);
 
-  // // Simulating header footer height changes
-  // const reduce = useRef(true);
-  // useEffect(() => {
-  //   let interval: NodeJS.Timeout;
-  //   if (reduce.current && (headerHeight > 0 || footerHeight > 0)) {
-  //     interval = setInterval(() => {
-  //       headerHeight > 0 &&
-  //         setHeaderHeight(prevHeaderHeight => prevHeaderHeight - 1);
-  //       footerHeight > 0 &&
-  //         setFooterHeight(prevFooterHeight => prevFooterHeight - 1);
-  //       if (footerHeight === 1) {
-  //         reduce.current = false;
-  //       }
-  //     }, 10);
-  //   }
-  //   return () => clearInterval(interval);
-  // }, [headerHeight, footerHeight]);
-
-  // useEffect(() => {
-  //   let interval: NodeJS.Timeout;
-  //   if (!reduce.current) {
-  //     interval = setInterval(() => {
-  //       headerHeight < HEADER_HEIGHT &&
-  //         setHeaderHeight(prevHeaderHeight => prevHeaderHeight + 1);
-  //       footerHeight < FOOTER_HEIGHT &&
-  //         setFooterHeight(prevFooterHeight => prevFooterHeight + 1);
-  //       if (footerHeight === FOOTER_HEIGHT - 1) {
-  //         reduce.current = true;
-  //       }
-  //     }, 10);
-  //   }
-  //   return () => clearInterval(interval);
-  // }, [headerHeight, footerHeight]);
-
   const _lastOffsetY = useRef(0);
   const _scrollDirection = useRef<string>();
   const _scrollBehaviourOffset = useRef(0);
@@ -75,6 +42,7 @@ function App() {
     new Animated.Value(0),
   ).current;
 
+  const floatingComponentContainerRef = useRef();
   const scrollBehvavioutOffsetInterpolation = useRef(
     _scrollBehaviourOffsetAnimatedValue,
   ).current.interpolate({
@@ -98,13 +66,13 @@ function App() {
     },
   );
 
-  const paddingTopAnimationOffset = headerAnimationOffset.interpolate({
+  const headerHeightAnimationOffset = headerAnimationOffset.interpolate({
     inputRange: [-HEADER_HEIGHT, 0],
     outputRange: [0, HEADER_HEIGHT],
     extrapolate: 'clamp',
   });
 
-  const paddingBottomAnimationOffset = footerAnimationOffset.interpolate({
+  const footerHeightAnimationOffset = footerAnimationOffset.interpolate({
     inputRange: [0, FOOTER_HEIGHT],
     outputRange: [FOOTER_HEIGHT, 0],
     extrapolate: 'clamp',
@@ -130,6 +98,10 @@ function App() {
     _scrollBehaviourOffsetAnimatedValue.setValue(
       _scrollBehaviourOffset.current,
     );
+    floatingComponentContainerRef.current?.updateAnimatedValue(
+      headerHeightAnimationOffset,
+      footerHeightAnimationOffset,
+    );
     _notifyOffSetStateChange();
   };
 
@@ -137,6 +109,7 @@ function App() {
     event?: NativeSyntheticEvent<NativeScrollEvent>,
   ): void => {
     if (event) {
+      floatingComponentContainerRef.current?.stopDragDrop();
       const nextY: number = event.nativeEvent.contentOffset.y;
       const delta =
         (nextY - _lastOffsetY.current) / (FOOTER_HEIGHT + HEADER_HEIGHT);
@@ -145,7 +118,13 @@ function App() {
       const nextOffset = _scrollBehaviourOffset.current + delta;
       _setBehaviourOffset(nextOffset);
       _lastOffsetY.current = nextY;
+    } else {
+      floatingComponentContainerRef.current?.startDragDrop();
     }
+  };
+
+  const handleScrollEnd = () => {
+    floatingComponentContainerRef.current?.startDragDrop();
   };
 
   const positionsRef = useRef<PositionData[]>(
@@ -241,24 +220,15 @@ function App() {
         footerHeight={footerHeight}
         headerAnimationOffset={headerAnimationOffset}
         footerAnimationOffset={footerAnimationOffset}
-        paddingTopAnimationOffset={paddingTopAnimationOffset}
-        paddingBottomAnimationOffset={paddingBottomAnimationOffset}
         handleOnScroll={handleOnScroll}
+        handleScrollEnd={handleScrollEnd}
       />
-      {getArray(NO_OF_FLOATING_COMPONENTS).map((val, idx) => (
-        <FloatingComponent
-          key={val}
-          val={val}
-          isDraggable={IS_DRAGGABLE}
-          positionData={POSITION_RELATIVE[idx]}
-          onDrop={handleDrop}
-          updatePositions={updatePositions}
-          headerHeight={headerHeight}
-          footerHeight={footerHeight}
-          paddingTopAnimationOffset={paddingTopAnimationOffset}
-          paddingBottomAnimationOffset={paddingBottomAnimationOffset}
-        />
-      ))}
+      <FloatingComponentContainer
+        ref={floatingComponentContainerRef}
+        headerHeight={headerHeight}
+        footerHeight={footerHeight}
+        scrollBehaviourOffsetAnimatedValue={_scrollBehaviourOffsetAnimatedValue}
+      />
     </>
   );
 }

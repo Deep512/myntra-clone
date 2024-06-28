@@ -6,10 +6,9 @@ export default function Page({
   headerHeight,
   footerHeight,
   handleOnScroll,
+  handleScrollEnd,
   headerAnimationOffset,
   footerAnimationOffset,
-  paddingTopAnimationOffset,
-  paddingBottomAnimationOffset,
 }) {
   const styles = useMemo(
     () =>
@@ -53,21 +52,25 @@ export default function Page({
       }),
     [footerHeight, headerHeight],
   );
+
+  const contentContainerStyle = {
+    paddingTop: headerHeight,
+    paddingBottom: 0,
+  };
   return (
     <View style={styles.app}>
-      <Animated.View
-        style={{
-          paddingTop: paddingTopAnimationOffset,
-          paddingBottom: paddingBottomAnimationOffset,
-        }}>
-        <ScrollView onScroll={handleOnScroll}>
-          {getArray(20).map((val, idx) => (
-            <View style={styles.content} key={idx}>
-              <Text style={styles.text}>{`Container ${val}`}</Text>
-            </View>
-          ))}
-        </ScrollView>
-      </Animated.View>
+      <ScrollView
+        contentContainerStyle={contentContainerStyle}
+        onMomentumScrollEnd={handleScrollEnd}
+        onScrollEndDrag={handleScrollEnd}
+        onScroll={handleOnScroll}>
+        {getArray(20).map((val, idx) => (
+          <View style={styles.content} key={idx}>
+            <Text style={styles.text}>{`Container ${val}`}</Text>
+          </View>
+        ))}
+      </ScrollView>
+
       <Animated.View
         style={[
           styles.pageLevelComponents,

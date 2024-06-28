@@ -22,6 +22,7 @@ export default function usePositionHook(
     offsetY = 0,
     position,
   } = positionData || {};
+
   const isFixed = position === 'fixed';
   const widgetX = useMemo(() => {
     let value = 0;
@@ -37,9 +38,9 @@ export default function usePositionHook(
     }
     value -= getContentInsetValue(contentX, widgetWidth);
     value += offsetX;
-    animatedXY.x.setValue(value);
     return value;
-  }, [contentX, widgetWidth, x, offsetX, windowWidth, animatedXY]);
+  }, [contentX, widgetWidth, x, offsetX, windowWidth]);
+  animatedXY.x.setValue(widgetX);
 
   horizontalTranslateBounds.current = useMemo(() => {
     let minX = offsetX > 0 ? offsetX : 0,
@@ -48,7 +49,7 @@ export default function usePositionHook(
   }, [windowWidth, widgetWidth, offsetX]);
 
   const widgetY = useMemo(() => {
-    let value = 0;
+    let value = isFixed ? 0 : headerHeight;
     const effWindowHeight = isFixed
       ? windowHeight
       : windowHeight - headerHeight - footerHeight;
@@ -64,7 +65,6 @@ export default function usePositionHook(
     }
     value -= getContentInsetValue(contentY, widgetHeight);
     value += offsetY;
-    animatedXY.y.setValue(value);
     return value;
   }, [
     contentY,
@@ -72,18 +72,18 @@ export default function usePositionHook(
     y,
     offsetY,
     windowHeight,
-    animatedXY,
     isFixed,
     headerHeight,
     footerHeight,
   ]);
+  animatedXY.y.setValue(widgetY);
 
   verticalTranslateBounds.current = useMemo(() => {
-    let minY = offsetY > 0 ? offsetY : 0,
+    let minY = (isFixed ? 0 : headerHeight) + (offsetY > 0 ? offsetY : 0),
       maxY =
         windowHeight -
         widgetHeight -
-        (isFixed ? 0 : footerHeight + headerHeight) +
+        (isFixed ? 0 : footerHeight) +
         (offsetY < 0 ? offsetY : 0);
 
     animatedXY.y.setValue(
@@ -100,11 +100,5 @@ export default function usePositionHook(
     footerHeight,
   ]);
 
-  return [
-    widgetX,
-    widgetY,
-    horizontalTranslateBounds,
-    verticalTranslateBounds,
-    animatedXY,
-  ];
+  return [horizontalTranslateBounds, verticalTranslateBounds, animatedXY];
 }
