@@ -117,11 +117,7 @@ const FloatingComponentContainer = forwardRef(
         let translateBounds =
           floatingComponentRef.current[idx]?.getTranslateBounds();
         if (width !== floatingComponentData.current[idx].layout.width) {
-          const horizontalBounds = getHorizontalBounds(
-            POSITION_DATA[idx],
-            width,
-            windowWidth,
-          );
+          const horizontalBounds = getHorizontalBounds(width, windowWidth);
           translateBounds = {...translateBounds, horizontalBounds};
         }
         if (height !== floatingComponentData.current[idx].layout.height) {
@@ -161,19 +157,21 @@ const FloatingComponentContainer = forwardRef(
         POSITION_DATA === POSITION_RELATIVE &&
           floatingComponentRef.current.forEach((_, idx) => {
             const positionData = POSITION_DATA[idx];
-            const newTranslateDiff =
-              positionData.y === 'top'
-                ? headerHeightAnimationOffset.__getValue() -
-                  headerHeightRef.current
-                : positionData.y === 'center'
-                ? headerHeightAnimationOffset.__getValue() -
-                  headerHeightRef.current -
-                  (footerHeightAnimationOffset.__getValue() -
-                    footerHeightRef.current)
-                : -(
-                    footerHeightAnimationOffset.__getValue() -
-                    footerHeightRef.current
-                  );
+
+            const newTranslateDiff = (() => {
+              const headerOffset =
+                headerHeightAnimationOffset.__getValue() -
+                headerHeightRef.current;
+              const footerOffset =
+                footerHeightAnimationOffset.__getValue() -
+                footerHeightRef.current;
+
+              const normalizedY = positionData.y / 100;
+              const interpolatedValue =
+                headerOffset * (1 - normalizedY) - footerOffset * normalizedY;
+
+              return interpolatedValue;
+            })();
 
             const newVerticalBounds = getVerticalBounds(
               positionData,

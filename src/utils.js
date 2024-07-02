@@ -1,37 +1,13 @@
 export const getArray = cnt => {
   return Array.from(Array(cnt).keys());
 };
-export const getContentInsetValue = (contentDimension, widgetDimension) => {
-  switch (contentDimension) {
-    case 'start':
-      return 0;
-    case 'middle':
-      return widgetDimension / 2;
-    case 'end':
-      return widgetDimension;
-    default:
-      return 0;
-  }
-};
 
 export const getWidgetX = (positionData, widgetWidth, windowWidth) => {
-  const {x, contentX, offsetX = 0} = positionData;
+  const {x, contentX} = positionData;
 
-  let value = 0;
-  switch (x) {
-    case 'center':
-      value += windowWidth / 2;
-      break;
-    case 'right':
-      value += windowWidth;
-      break;
-    default:
-      break;
-  }
-  value -= getContentInsetValue(contentX, widgetWidth);
-  value += offsetX;
-  let minX = offsetX > 0 ? offsetX : 0,
-    maxX = windowWidth - widgetWidth + (offsetX < 0 ? offsetX : 0);
+  let value = (x / 100) * windowWidth - (contentX / 100) * widgetWidth;
+  let minX = 0,
+    maxX = windowWidth - widgetWidth;
   return {widgetX: value, horizontalBounds: {minX, maxX}};
 };
 
@@ -42,52 +18,34 @@ export const getWidgetY = (
   headerHeight,
   footerHeight,
 ) => {
-  const {position, y, contentY, offsetY = 0} = positionData;
+  const {position, y, contentY} = positionData;
   const isFixed = position === 'fixed';
   let value = isFixed ? 0 : headerHeight;
   const effWindowHeight = isFixed
     ? windowHeight
     : windowHeight - headerHeight - footerHeight;
-  switch (y) {
-    case 'center':
-      value += effWindowHeight / 2;
-      break;
-    case 'bottom':
-      value += effWindowHeight;
-      break;
-    default:
-      break;
-  }
-  value -= getContentInsetValue(contentY, widgetHeight);
-  value += offsetY;
-  let minY = (isFixed ? 0 : headerHeight) + (offsetY > 0 ? offsetY : 0),
-    maxY =
-      windowHeight -
-      widgetHeight -
-      (isFixed ? 0 : footerHeight) +
-      (offsetY < 0 ? offsetY : 0);
+  value += effWindowHeight * (y / 100) - (contentY / 100) * widgetHeight;
+
+  let minY = isFixed ? 0 : headerHeight,
+    maxY = windowHeight - widgetHeight - (isFixed ? 0 : footerHeight);
 
   return {widgetY: value, verticalBounds: {minY, maxY}};
 };
 
 export const getVerticalBounds = (
-  {isFixed, offsetY},
+  {isFixed},
   widgetHeight,
   headerHeight,
   footerHeight,
   windowHeight,
 ) => {
-  let minY = (isFixed ? 0 : headerHeight) + (offsetY > 0 ? offsetY : 0),
-    maxY =
-      windowHeight -
-      widgetHeight -
-      (isFixed ? 0 : footerHeight) +
-      (offsetY < 0 ? offsetY : 0);
+  let minY = isFixed ? 0 : headerHeight,
+    maxY = windowHeight - widgetHeight - (isFixed ? 0 : footerHeight);
   return {minY, maxY};
 };
 
-export const getHorizontalBounds = ({offsetX}, widgetWidth, windowWidth) => {
-  let minX = offsetX > 0 ? offsetX : 0,
-    maxX = windowWidth - widgetWidth + (offsetX < 0 ? offsetX : 0);
+export const getHorizontalBounds = (widgetWidth, windowWidth) => {
+  let minX = 0,
+    maxX = windowWidth - widgetWidth;
   return {minX, maxX};
 };

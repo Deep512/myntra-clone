@@ -138,10 +138,9 @@ const FloatingComponent = forwardRef(
           key={val}
           style={[
             styles.floatingComponentContent,
-
             {
               transform: animatedXY.getTranslateTransform(),
-              width: animatedWidth,
+              width: 100,
             },
           ]}>
           <Text>Floating Component {val}</Text>
