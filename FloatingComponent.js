@@ -1,13 +1,6 @@
 import React, {useRef, forwardRef, useImperativeHandle} from 'react';
-import {
-  Animated,
-  Text,
-  StyleSheet,
-  PanResponder,
-  View,
-  Dimensions,
-} from 'react-native';
-import {getVerticalBounds, getWidgetX, getWidgetY} from './src/utils';
+import {Animated, Text, StyleSheet, PanResponder, View} from 'react-native';
+import withDimensions from './src/withDimensions';
 const styles = StyleSheet.create({
   absoluteFloatingComponent: {
     position: 'absolute',
@@ -22,79 +15,67 @@ const FloatingComponent = forwardRef(
   (
     {
       val,
-      positionData,
       isDraggable,
-      onDrop,
-      updatePositions,
-      headerHeight,
-      footerHeight,
       scrollBehaviourOffsetAnimatedValue,
+      updateFloatingComponentPosition,
+      handleLayoutChange,
+      windowHeight,
+      windowWidth,
+      floatingComponentData,
+      onDrop,
     },
     ref,
   ) => {
-    const horizontalTranslateBounds = useRef({minX: 0, maxY: 0});
-    const verticalTranslateBounds = useRef({minX: 0, maxY: 0});
-    const widgetLayoutRef = useRef({width: 0, height: 0});
-    const isFirstRef = useRef(true);
+    const {animatedXY} = floatingComponentData;
 
-    const {width: windowWidth, height: windowHeight} = Dimensions.get('window');
-    const animatedXY = useRef(new Animated.ValueXY({x: 0, y: 0})).current;
-    const animatedWidth = useRef(
-      scrollBehaviourOffsetAnimatedValue,
-    ).current.interpolate({
+    const translateBounds = useRef({
+      horizontalBounds: {minX: 0, maxX: windowWidth},
+      verticalBounds: {minY: 0, maxY: windowHeight},
+    });
+    const dragDropRef = useRef(isDraggable);
+
+    const isScrolling = useRef(new Animated.Value(0)).current;
+
+    const animatedWidth = useRef(isScrolling).current.interpolate({
       inputRange: [0, 1],
       outputRange: [100, 50],
       extrapolate: 'clamp',
     });
 
-    const headerHeightRef = useRef(headerHeight);
-    const footerHeightRef = useRef(footerHeight);
-    const dragDropRef = useRef(isDraggable);
-
     useImperativeHandle(ref, () => ({
+      // START/STOP DRAG AND DROP BASED ON SCROLL STATUS (WIDGET LEVEL)
       startDragDrop: () => {
         dragDropRef.current = true;
+        Animated.timing(isScrolling, {
+          toValue: 0,
+          duration: 50,
+          useNativeDriver: false,
+        }).start();
       },
       stopDragDrop: () => {
         dragDropRef.current = false;
+        Animated.timing(isScrolling, {
+          toValue: 1,
+          duration: 20,
+          useNativeDriver: false,
+        }).start();
       },
-      updateAnimatedValue: (
-        headerHeightAnimatedValue,
-        footerHeightAnimatedValue,
-      ) => {
-        const newTranslateDiff =
-          positionData.y === 'top'
-            ? headerHeightAnimatedValue.__getValue() - headerHeightRef.current
-            : positionData.y === 'center'
-            ? headerHeightAnimatedValue.__getValue() -
-              headerHeightRef.current -
-              (footerHeightAnimatedValue.__getValue() - footerHeightRef.current)
-            : -(
-                footerHeightAnimatedValue.__getValue() - footerHeightRef.current
-              );
 
-        headerHeightRef.current = headerHeightAnimatedValue.__getValue();
-        footerHeightRef.current = footerHeightAnimatedValue.__getValue();
-
-        verticalTranslateBounds.current = getVerticalBounds(
-          positionData,
-          widgetLayoutRef.current.height,
-          headerHeightRef.current,
-          footerHeightRef.current,
-          windowHeight,
-        );
-        const newAnimatedY = Math.max(
-          verticalTranslateBounds.current.minY,
-          Math.min(
-            animatedXY.__getValue().y + newTranslateDiff,
-            verticalTranslateBounds.current.maxY,
-          ),
-        );
-
-        animatedXY.y.setValue(newAnimatedY);
+      // DRAG AND DROP TRANSLATE BOUNDS (WIDGET and PARENT LEVEL)
+      // WIDGET LEVEL: Drag and Drop
+      // PARENT LEVEL: for scroll animation
+      getTranslateBounds: () => {
+        return translateBounds.current;
+      },
+      setTranslateBounds: newTranslateBounds => {
+        translateBounds.current = {
+          ...translateBounds.current,
+          ...newTranslateBounds,
+        };
       },
     }));
 
+    // DRAG DROP PAN HANDLERS (WIDGET LEVEL)
     const panResponder = useRef(
       PanResponder.create({
         onMoveShouldSetPanResponder: (evt, gestureState) =>
@@ -106,8 +87,9 @@ const FloatingComponent = forwardRef(
           });
         },
         onPanResponderMove: (evt, gestureState) => {
-          const {minX, maxX} = horizontalTranslateBounds.current;
-          const {minY, maxY} = verticalTranslateBounds.current;
+          const {horizontalBounds, verticalBounds} = translateBounds.current;
+          const {minX, maxX} = horizontalBounds;
+          const {minY, maxY} = verticalBounds;
 
           const {x, y} = animatedXY;
           let xDiff = gestureState.dx;
@@ -132,6 +114,8 @@ const FloatingComponent = forwardRef(
         },
         onPanResponderRelease: (evt, gestureState) => {
           animatedXY.flattenOffset();
+          updateFloatingComponentPosition &&
+            updateFloatingComponentPosition(val, animatedXY.__getValue());
           // onDrop &&
           //   onDrop(
           //     val,
@@ -144,8 +128,11 @@ const FloatingComponent = forwardRef(
     ).current;
 
     return (
-      <Animated.View
+      <View
         style={styles.absoluteFloatingComponent}
+        onLayout={({nativeEvent}) => {
+          handleLayoutChange && handleLayoutChange(val, nativeEvent.layout);
+        }}
         {...panResponder.panHandlers}>
         <Animated.View
           key={val}
@@ -156,36 +143,12 @@ const FloatingComponent = forwardRef(
               transform: animatedXY.getTranslateTransform(),
               width: animatedWidth,
             },
-          ]}
-          onLayout={({nativeEvent}) => {
-            if (!isFirstRef.current) return;
-            const {width, height} = nativeEvent.layout;
-            const {widgetX, horizontalBounds} = getWidgetX(
-              positionData,
-              width,
-              windowWidth,
-            );
-            const {widgetY, verticalBounds} = getWidgetY(
-              positionData,
-              height,
-              windowHeight,
-              headerHeight,
-              footerHeight,
-            );
-            animatedXY.x.setValue(widgetX);
-            animatedXY.y.setValue(widgetY);
-
-            widgetLayoutRef.current = {width, height};
-
-            horizontalTranslateBounds.current = horizontalBounds;
-            verticalTranslateBounds.current = verticalBounds;
-            isFirstRef.current = false;
-          }}>
+          ]}>
           <Text>Floating Component {val}</Text>
         </Animated.View>
-      </Animated.View>
+      </View>
     );
   },
 );
 
-export default FloatingComponent;
+export default withDimensions(FloatingComponent);

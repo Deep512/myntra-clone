@@ -85,3 +85,9 @@ export const getVerticalBounds = (
       (offsetY < 0 ? offsetY : 0);
   return {minY, maxY};
 };
+
+export const getHorizontalBounds = ({offsetX}, widgetWidth, windowWidth) => {
+  let minX = offsetX > 0 ? offsetX : 0,
+    maxX = windowWidth - widgetWidth + (offsetX < 0 ? offsetX : 0);
+  return {minX, maxX};
+};
