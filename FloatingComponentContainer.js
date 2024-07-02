@@ -31,6 +31,7 @@ const FloatingComponentContainer = forwardRef(
       scrollBehaviourOffsetAnimatedValue,
       windowHeight,
       windowWidth,
+      isScrolling,
     },
     ref,
   ) => {
@@ -122,7 +123,7 @@ const FloatingComponentContainer = forwardRef(
         }
         if (height !== floatingComponentData.current[idx].layout.height) {
           const verticalBounds = getVerticalBounds(
-            POSITION_DATA[idx],
+            POSITION_DATA[idx].isRelative,
             height,
             headerHeightRef.current,
             footerHeightRef.current,
@@ -140,16 +141,6 @@ const FloatingComponentContainer = forwardRef(
     };
 
     useImperativeHandle(ref, () => ({
-      startDragDrop: () => {
-        floatingComponentRef.current.forEach(floatingCompRef => {
-          floatingCompRef.startDragDrop();
-        });
-      },
-      stopDragDrop: () => {
-        floatingComponentRef.current.forEach(floatingCompRef => {
-          floatingCompRef.stopDragDrop();
-        });
-      },
       updateAnimatedValue: (
         headerHeightAnimationOffset,
         footerHeightAnimationOffset,
@@ -174,7 +165,7 @@ const FloatingComponentContainer = forwardRef(
             })();
 
             const newVerticalBounds = getVerticalBounds(
-              positionData,
+              positionData.isRelative,
               floatingComponentData.current[idx].layout.height,
               headerHeightAnimationOffset.__getValue(),
               footerHeightAnimationOffset.__getValue(),
@@ -216,6 +207,7 @@ const FloatingComponentContainer = forwardRef(
           key={val}
           val={val}
           isDraggable={IS_DRAGGABLE}
+          isScrolling={isScrolling}
           positionData={POSITION_DATA[idx]}
           headerHeight={headerHeight}
           footerHeight={footerHeight}

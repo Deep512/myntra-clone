@@ -6,9 +6,8 @@ export const getWidgetX = (positionData, widgetWidth, windowWidth) => {
   const {x, contentX} = positionData;
 
   let value = (x / 100) * windowWidth - (contentX / 100) * widgetWidth;
-  let minX = 0,
-    maxX = windowWidth - widgetWidth;
-  return {widgetX: value, horizontalBounds: {minX, maxX}};
+  const horizontalBounds = getHorizontalBounds(widgetWidth, windowWidth);
+  return {widgetX: value, horizontalBounds};
 };
 
 export const getWidgetY = (
@@ -18,29 +17,33 @@ export const getWidgetY = (
   headerHeight,
   footerHeight,
 ) => {
-  const {position, y, contentY} = positionData;
-  const isFixed = position === 'fixed';
-  let value = isFixed ? 0 : headerHeight;
-  const effWindowHeight = isFixed
-    ? windowHeight
-    : windowHeight - headerHeight - footerHeight;
+  const {isRelative, y, contentY} = positionData;
+  let value = isRelative ? headerHeight : 0;
+  const effWindowHeight = isRelative
+    ? windowHeight - headerHeight - footerHeight
+    : windowHeight;
   value += effWindowHeight * (y / 100) - (contentY / 100) * widgetHeight;
 
-  let minY = isFixed ? 0 : headerHeight,
-    maxY = windowHeight - widgetHeight - (isFixed ? 0 : footerHeight);
+  const verticalBounds = getVerticalBounds(
+    isRelative,
+    widgetHeight,
+    headerHeight,
+    footerHeight,
+    windowHeight,
+  );
 
-  return {widgetY: value, verticalBounds: {minY, maxY}};
+  return {widgetY: value, verticalBounds};
 };
 
 export const getVerticalBounds = (
-  {isFixed},
+  isRelative,
   widgetHeight,
   headerHeight,
   footerHeight,
   windowHeight,
 ) => {
-  let minY = isFixed ? 0 : headerHeight,
-    maxY = windowHeight - widgetHeight - (isFixed ? 0 : footerHeight);
+  let minY = isRelative ? headerHeight : 0,
+    maxY = windowHeight - widgetHeight - (isRelative ? footerHeight : 0);
   return {minY, maxY};
 };
 

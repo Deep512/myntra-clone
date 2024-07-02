@@ -50,6 +50,7 @@ function App() {
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
+  const isScrolling = useRef(new Animated.Value(0)).current;
 
   const headerAnimationOffset = scrollBehvavioutOffsetInterpolation.interpolate(
     {
@@ -109,7 +110,7 @@ function App() {
     event?: NativeSyntheticEvent<NativeScrollEvent>,
   ): void => {
     if (event) {
-      floatingComponentContainerRef.current?.stopDragDrop();
+      isScrolling.setValue(1);
       const nextY: number = event.nativeEvent.contentOffset.y;
       const delta =
         (nextY - _lastOffsetY.current) / (FOOTER_HEIGHT + HEADER_HEIGHT);
@@ -119,12 +120,12 @@ function App() {
       _setBehaviourOffset(nextOffset);
       _lastOffsetY.current = nextY;
     } else {
-      floatingComponentContainerRef.current?.startDragDrop();
+      isScrolling.setValue(0);
     }
   };
 
   const handleScrollEnd = () => {
-    floatingComponentContainerRef.current?.startDragDrop();
+    isScrolling.setValue(0);
   };
 
   const positionsRef = useRef<PositionData[]>(
@@ -228,6 +229,7 @@ function App() {
         headerHeight={headerHeight}
         footerHeight={footerHeight}
         scrollBehaviourOffsetAnimatedValue={_scrollBehaviourOffsetAnimatedValue}
+        isScrolling={isScrolling}
       />
     </>
   );

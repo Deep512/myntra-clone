@@ -16,6 +16,7 @@ const FloatingComponent = forwardRef(
     {
       val,
       isDraggable,
+      isScrolling,
       scrollBehaviourOffsetAnimatedValue,
       updateFloatingComponentPosition,
       handleLayoutChange,
@@ -32,35 +33,15 @@ const FloatingComponent = forwardRef(
       horizontalBounds: {minX: 0, maxX: windowWidth},
       verticalBounds: {minY: 0, maxY: windowHeight},
     });
-    const dragDropRef = useRef(isDraggable);
 
-    const isScrolling = useRef(new Animated.Value(0)).current;
-
-    const animatedWidth = useRef(isScrolling).current.interpolate({
-      inputRange: [0, 1],
-      outputRange: [100, 50],
-      extrapolate: 'clamp',
-    });
+    // WIDGET LEVEL ANIMATIONS
+    // const animatedWidth = useRef(isScrolling).current.interpolate({
+    //   inputRange: [0, 1],
+    //   outputRange: [100, 50],
+    //   extrapolate: 'clamp',
+    // });
 
     useImperativeHandle(ref, () => ({
-      // START/STOP DRAG AND DROP BASED ON SCROLL STATUS (WIDGET LEVEL)
-      startDragDrop: () => {
-        dragDropRef.current = true;
-        Animated.timing(isScrolling, {
-          toValue: 0,
-          duration: 50,
-          useNativeDriver: false,
-        }).start();
-      },
-      stopDragDrop: () => {
-        dragDropRef.current = false;
-        Animated.timing(isScrolling, {
-          toValue: 1,
-          duration: 20,
-          useNativeDriver: false,
-        }).start();
-      },
-
       // DRAG AND DROP TRANSLATE BOUNDS (WIDGET and PARENT LEVEL)
       // WIDGET LEVEL: Drag and Drop
       // PARENT LEVEL: for scroll animation
@@ -79,7 +60,7 @@ const FloatingComponent = forwardRef(
     const panResponder = useRef(
       PanResponder.create({
         onMoveShouldSetPanResponder: (evt, gestureState) =>
-          isDraggable && dragDropRef.current,
+          isDraggable && !isScrolling.__getValue(),
         onPanResponderGrant: (evt, gestureState) => {
           animatedXY.setOffset({
             x: animatedXY.x._value,
